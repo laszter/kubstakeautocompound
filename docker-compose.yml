@@ -1,0 +1,150 @@
+# KUB Stake Auto-Compound — docker compose stack
+#   cp .env.example .env && bash scripts/gen-secrets.sh && docker compose up -d --build
+#
+# Services: db (Postgres 18, not published) → migrate (one-shot, exit 0) → web + worker
+# Every service gets only the env it needs (web never sees RPC settings; migrate never sees MASTER_KEY).
+# Required secrets fail fast (${VAR:?...}) when missing or empty in .env.
+
+name: kubstake
+
+x-database-url: &database-url "postgres://${POSTGRES_USER:-kubstake}:${POSTGRES_PASSWORD:?ยังไม่ได้ตั้ง POSTGRES_PASSWORD ใน .env (รัน bash scripts/gen-secrets.sh)}@db:5432/${POSTGRES_DB:-kubstake}"
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+# hardening shared by the Node services (images already run as the non-root `node` user)
+x-node-hardening: &node-hardening
+  init: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging: *logging
+
+x-worker-build: &worker-build
+  context: .
+  dockerfile: Dockerfile
+  target: worker
+
+# seed values for the single app_settings row (written once by migrate; editable later on the settings page)
+x-settings-seed: &settings-seed
+  GAS_RESERVE_KUB: ${GAS_RESERVE_KUB:-0.05}
+  MAX_GAS_PRICE_GWEI: ${MAX_GAS_PRICE_GWEI:-50}
+  MIN_INTERVAL_SEC: ${MIN_INTERVAL_SEC:-3600}
+  R_FLOOR_KUB: ${R_FLOOR_KUB:-0.5}
+  CHECK_MIN_SEC: ${CHECK_MIN_SEC:-900}
+  CHECK_MAX_SEC: ${CHECK_MAX_SEC:-21600}
+  VALIDATOR_SYNC_SEC: ${VALIDATOR_SYNC_SEC:-1800}
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kubstake}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ยังไม่ได้ตั้ง POSTGRES_PASSWORD ใน .env (รัน bash scripts/gen-secrets.sh)}
+      POSTGRES_DB: ${POSTGRES_DB:-kubstake}
+      TZ: ${TZ:-Asia/Bangkok}
+    volumes:
+      # PG18 images keep data under /var/lib/postgresql/<major>/... → mount the parent dir
+      - pgdata:/var/lib/postgresql
+    # no `ports:` on purpose — Postgres is reachable only on the internal compose network
+    healthcheck:
+      # TCP check: the temporary init server (first boot) listens on the unix socket only
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-kubstake} -d ${POSTGRES_DB:-kubstake}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    logging: *logging
+
+  migrate:
+    <<: *node-hardening
+    build: *worker-build
+    image: kubstake-worker:local
+    command: ["node", "dist/migrate.cjs"]
+    restart: "no"
+    read_only: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *settings-seed
+      DATABASE_URL: *database-url
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Bangkok}
+      TZ: ${TZ:-Asia/Bangkok}
+
+  web:
+    <<: *node-hardening
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    image: kubstake-web:local
+    restart: unless-stopped
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: *database-url
+      MASTER_KEY: ${MASTER_KEY:?ยังไม่ได้ตั้ง MASTER_KEY ใน .env (openssl rand -base64 32 หรือรัน bash scripts/gen-secrets.sh)}
+      SESSION_SECRET: ${SESSION_SECRET:?ยังไม่ได้ตั้ง SESSION_SECRET ใน .env (openssl rand -base64 48 หรือรัน bash scripts/gen-secrets.sh)}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_TTL_SEC: ${SESSION_TTL_SEC:-43200}
+      EXPLORER_URL: ${EXPLORER_URL:-https://www.kubscan.com}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Bangkok}
+      TZ: ${TZ:-Asia/Bangkok}
+      # Docker sets HOSTNAME to the container id; Next standalone binds to $HOSTNAME → force all interfaces
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    healthcheck:
+      # node:26-slim has no curl → use Node's fetch
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *node-hardening
+    build: *worker-build
+    image: kubstake-worker:local
+    restart: unless-stopped
+    read_only: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *settings-seed
+      DATABASE_URL: *database-url
+      MASTER_KEY: ${MASTER_KEY:?ยังไม่ได้ตั้ง MASTER_KEY ใน .env (openssl rand -base64 32 หรือรัน bash scripts/gen-secrets.sh)}
+      RPC_URL: ${RPC_URL:-https://rpc.kubchain.io}
+      CHAIN_ID: ${CHAIN_ID:-96}
+      # `-` (not `:-`): an explicitly empty SUBGRAPH_URL= disables the subgraph lookup
+      SUBGRAPH_URL: ${SUBGRAPH_URL-https://gateway.bitkubgraph.io/subgraphs/name/bitkubchain/pos}
+      # true = simulate only, never broadcast. Set DRY_RUN=false in .env only when ready for real txs.
+      DRY_RUN: ${DRY_RUN:-true}
+      TICK_INTERVAL_SEC: ${TICK_INTERVAL_SEC:-30}
+      RPC_CONCURRENCY: ${RPC_CONCURRENCY:-4}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Bangkok}
+      TZ: ${TZ:-Asia/Bangkok}
+    healthcheck:
+      # fresh when worker_heartbeat.last_tick_at < 3 × TICK_INTERVAL_SEC (DB clock)
+      test: ["CMD", "node", "dist/healthcheck.cjs"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    # SIGTERM → worker finishes the current step (may be waiting on a tx receipt) before exiting
+    stop_grace_period: 60s
+
+volumes:
+  pgdata:

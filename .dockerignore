@@ -1,0 +1,36 @@
+# Build context for /Dockerfile. Images are built from source inside the container
+# (npm ci + next build + esbuild), so host build output and deps must never leak in.
+
+# dependencies / build output (host builds are macOS-native → must not reach the linux image)
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+coverage
+**/coverage
+**/*.tsbuildinfo
+
+# secrets — .env never goes into an image (runtime env comes from docker compose)
+.env*
+**/.env*
+
+# repo / tooling noise
+.git
+.gitignore
+tasks
+.playwright-mcp
+**/.playwright-mcp
+.DS_Store
+**/.DS_Store
+**/*.log
+.vscode
+.idea
+apps/web/AGENTS.md
+
+# deployment files (not needed inside the image; keeps the build cache stable when they change)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+scripts

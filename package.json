@@ -1,0 +1,32 @@
+{
+  "name": "kubstake",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint . && npm run lint -w @kubstake/web",
+    "test": "vitest run",
+    "build": "npm run build -w @kubstake/web && npm run build -w @kubstake/worker",
+    "db:generate": "npm run generate -w @kubstake/db --",
+    "smoke:mainnet": "tsx packages/core/scripts/smoke-mainnet.ts",
+    "dev:web": "npm run dev -w @kubstake/web",
+    "dev:worker": "npm run dev -w @kubstake/worker",
+    "e2e:fork": "bash scripts/e2e-fork.sh"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "9.39.5",
+    "tsx": "4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.0.5"
+  }
+}

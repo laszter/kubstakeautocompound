@@ -1,0 +1,19 @@
+{
+  "name": "@kubstake/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "smoke:mainnet": "tsx scripts/smoke-mainnet.ts"
+  },
+  "dependencies": {
+    "croner": "11.0.0",
+    "viem": "2.57.16",
+    "zod": "4.6.7"
+  }
+}

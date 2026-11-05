@@ -1,0 +1,179 @@
+/* Anuphan Variable (OFL) bundled from node_modules → woff2 files land in .next/static/media; builds need no network. */
+@import "@fontsource-variable/anuphan";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Theme = class on <html> (light | dark | system), read server-side from the `theme` cookie (lib/theme.ts).
+ * `dark:` applies under .dark, or under .system while the OS prefers dark — no inline script needed.
+ * :is() keeps the specificity shadcn's `dark:` utilities expect.
+ */
+@custom-variant dark {
+  &:is(.dark, .dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:is(.system, .system *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-overlay: var(--overlay);
+
+  /* Thai-capable system fallbacks after the bundled variable font. */
+  --font-sans: "Anuphan Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Thai",
+    "Leelawadee UI", Thonburi, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-heading: var(--font-sans);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* LIGHT tokens (default). --background must match THEME_COLORS.light in src/lib/theme.ts. */
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+
+  --background: #fbfafc;
+  --foreground: #1a1d21;
+  --card: #ffffff;
+  --card-foreground: #1a1d21;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d21;
+  --primary: #088048;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f0;
+  --secondary-foreground: #1a1d21;
+  --muted: #f0f0f0;
+  --muted-foreground: #636a75; /* U7: 5.46 on card, 4.79 on --muted (#6b7280 was 4.24 there) */
+  --accent: #f4f4f5;
+  --accent-foreground: #1a1d21;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --success: #088048;
+  --success-foreground: #ffffff;
+  --success-soft: #e7f8ef;
+  --warning: #b54708;
+  --warning-foreground: #ffffff;
+  --warning-soft: #fef3e2;
+  --info: #175cd3;
+  --info-foreground: #ffffff;
+  --info-soft: #e8f0fd;
+  --border: #e8e8e8; /* decorative hairlines */
+  --input: #8a929b; /* form-control boundary (input/select/radio/switch-off): ≥ 3:1 on card + page bg (WCAG 1.4.11) */
+  --ring: #088048;
+  --brand: #0eb366; /* non-text accents only (dots, icons, nav underline) */
+  --overlay: rgb(0 0 0 / 0.45);
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
+:root.system {
+  color-scheme: light dark;
+}
+
+/* DARK tokens — written once; emitted for .dark and for .system + OS dark via the variant above.
+   --background must match THEME_COLORS.dark in src/lib/theme.ts. */
+:root {
+  @variant dark {
+    --background: #0e1114;
+    --foreground: #e6e8eb;
+    --card: #15191d;
+    --card-foreground: #e6e8eb;
+    --popover: #1c2126;
+    --popover-foreground: #e6e8eb;
+    --primary: #19c474;
+    --primary-foreground: #04140b;
+    --secondary: #1f252b;
+    --secondary-foreground: #e6e8eb;
+    --muted: #1f252b;
+    --muted-foreground: #8a929b;
+    --accent: #242a31;
+    --accent-foreground: #e6e8eb;
+    --destructive: #f87171;
+    --destructive-foreground: #1a0505;
+    --success: #34d399;
+    --success-foreground: #04140b;
+    --success-soft: #12291f;
+    --warning: #f5b748;
+    --warning-foreground: #1f1400;
+    --warning-soft: #2e2410;
+    --info: #60a5fa;
+    --info-foreground: #06182e;
+    --info-soft: #132033;
+    --border: #2a3037;
+    --input: #646d78; /* ≥ 3:1 on card / popover / page bg */
+    --ring: #19c474;
+    --brand: #19c474;
+    --overlay: rgb(0 0 0 / 0.6);
+  }
+}
+
+/* ThemeToggle adds this class for one frame so the switch is instant (no colour transitions). */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,68 @@
+# KUB mainnet-FORK e2e overlay (T11) — used ONLY by scripts/e2e-fork.sh:
+#   docker compose -p kubstake-e2e --env-file scripts/e2e-fork/.env.e2e \
+#     -f docker-compose.yml -f scripts/e2e-fork/docker-compose.fork.yml ...
+#
+# Isolation from the real stack: own project name (-p kubstake-e2e → volume kubstake-e2e_pgdata, network
+# kubstake-e2e_default), own generated env file, own image tag (kubstake-worker:e2e), web disabled.
+#
+# SAFETY: the worker runs with DRY_RUN=false here, so its RPC is pinned to the local anvil fork below
+# (literal values, NOT ${...} interpolation — nothing in an env file or the shell can redirect it).
+# anvil executes every tx locally; it only READS state from the upstream --fork-url and never forwards
+# transactions to it. e2e-fork.sh additionally refuses to start if the resolved worker RPC_URL differs.
+
+services:
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:v1.5.1
+    entrypoint: ["anvil"]
+    command:
+      - --fork-url
+      - https://rpc.kubchain.io # read-only upstream (not archive → state of the fork block expires after ~128 blocks)
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8545"
+      - --block-time
+      - "3" # like mainnet (receipts are not instant → exercises the real receipt wait)
+      - --compute-units-per-second
+      - "150" # throttle lazy state fetches (mainnet RPC answers bursts with -32005)
+      - --fork-retry-backoff
+      - "1000"
+      - --retries
+      - "10"
+      - --timeout
+      - "30000"
+      - --accounts
+      - "0" # no pre-funded dev accounts; the e2e funds one throwaway key with anvil_setBalance
+    ports:
+      - "127.0.0.1:${E2E_ANVIL_PORT:-18545}:8545"
+    healthcheck:
+      test: ["CMD", "cast", "chain-id", "--rpc-url", "http://127.0.0.1:8545"]
+      interval: 2s
+      timeout: 10s
+      retries: 30
+      start_period: 5s
+    restart: "no"
+
+  db:
+    # published on loopback only so the host-side setup/assert scripts can reach the throwaway e2e DB
+    ports:
+      - "127.0.0.1:${E2E_DB_PORT:-15432}:5432"
+    restart: "no"
+
+  migrate:
+    image: kubstake-worker:e2e
+
+  worker:
+    image: kubstake-worker:e2e
+    restart: "no"
+    depends_on:
+      anvil:
+        condition: service_healthy
+    environment:
+      RPC_URL: http://anvil:8545
+      DRY_RUN: "false"
+      SUBGRAPH_URL: "" # no external lookups from the e2e worker
+
+  web:
+    # not needed for the e2e; only started with an explicit --profile e2e-web
+    profiles: ["e2e-web"]
