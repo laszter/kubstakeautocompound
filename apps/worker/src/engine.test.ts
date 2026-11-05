@@ -36,14 +36,13 @@ const SETTINGS: EngineSettings = {
   checkMaxSec: 21_600,
 };
 
-function setup(opts: { dryRun?: boolean; position?: Partial<PositionRow>; validator?: Partial<EngineValidator> } = {}) {
-  const dryRun = opts.dryRun ?? false;
+function setup(opts: { position?: Partial<PositionRow>; validator?: Partial<EngineValidator> } = {}) {
   const chain = mockChain();
   const txStore = memoryTxStore(() => NOW);
   const store = memoryEngineStore();
   const signer = testSigner();
   const log = silentLogger();
-  const txManager = new TxManager({ chain, store: txStore, dryRun, log, now: () => NOW });
+  const txManager = new TxManager({ chain, store: txStore, log, now: () => NOW });
   const accounts = { load: vi.fn(async () => signer) };
   const ctx: EngineCtx = {
     chain,
@@ -51,7 +50,7 @@ function setup(opts: { dryRun?: boolean; position?: Partial<PositionRow>; valida
     store,
     accounts,
     log,
-    config: { dryRun, subgraphUrl: "", timezone: "Asia/Bangkok", tickIntervalSec: 30 },
+    config: { subgraphUrl: "", timezone: "Asia/Bangkok", tickIntervalSec: 30 },
     now: () => NOW,
   };
   const ep: EnginePosition = {
@@ -174,18 +173,6 @@ describe("checkPosition — optimal mode", () => {
     expect(p.nextCheckAt).toEqual(new Date(NOW.getTime() + 60 * 60_000));
   });
 
-  it("DRY_RUN → simulated only: no signature, no txs row, no last_compound_at", async () => {
-    const { chain, txStore, store, signer, ctx, ep } = setup({ dryRun: true });
-    await checkPosition(ctx, ep, { settings: SETTINGS, gasPriceWei: 25n * GWEI });
-    expect(chain.estimateGas).toHaveBeenCalledTimes(1);
-    expect(signer.signTransaction).not.toHaveBeenCalled();
-    expect(chain.sendRawTransaction).not.toHaveBeenCalled();
-    expect(txStore.rows.size).toBe(0);
-    const p = store.merged("position-1");
-    expect(p.lastRunResult).toBe("dry-run: would compound 1-tx 11 KUB (gas ≈ 207000)");
-    expect(p.lastCompoundAt).toBeUndefined();
-  });
-
   it("disabled position → state refreshed, never compounds", async () => {
     const { signer, store, ctx, ep } = setup({ position: { enabled: false } });
     const out = await checkPosition(ctx, ep, { settings: SETTINGS, gasPriceWei: 25n * GWEI });
@@ -302,13 +289,6 @@ describe("compoundNow (manual action)", () => {
     const run = await compoundNow(ctx, ep, { settings: SETTINGS, gasPriceWei: 25n * GWEI }, "action-1");
     expect(run).toMatchObject({ status: "skipped", result: "skipped: no_principal" });
     expect(run.error).toMatch(/^no_principal/);
-    expect(signer.signTransaction).not.toHaveBeenCalled();
-  });
-
-  it("DRY_RUN → action error text 'DRY_RUN: simulated only (gas ≈ N)'", async () => {
-    const { ctx, ep, signer } = setup({ dryRun: true });
-    const run = await compoundNow(ctx, ep, { settings: SETTINGS, gasPriceWei: 25n * GWEI }, "action-1");
-    expect(run).toMatchObject({ status: "dry_run", error: "DRY_RUN: simulated only (gas ≈ 207000)" });
     expect(signer.signTransaction).not.toHaveBeenCalled();
   });
 });

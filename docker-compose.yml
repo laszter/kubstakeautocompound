@@ -129,8 +129,6 @@ services:
       CHAIN_ID: ${CHAIN_ID:-96}
       # `-` (not `:-`): an explicitly empty SUBGRAPH_URL= disables the subgraph lookup
       SUBGRAPH_URL: ${SUBGRAPH_URL-https://gateway.bitkubgraph.io/subgraphs/name/bitkubchain/pos}
-      # true = simulate only, never broadcast. Set DRY_RUN=false in .env only when ready for real txs.
-      DRY_RUN: ${DRY_RUN:-true}
       TICK_INTERVAL_SEC: ${TICK_INTERVAL_SEC:-30}
       RPC_CONCURRENCY: ${RPC_CONCURRENCY:-4}
       LOG_LEVEL: ${LOG_LEVEL:-info}

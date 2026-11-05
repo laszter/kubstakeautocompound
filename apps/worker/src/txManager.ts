@@ -15,7 +15,7 @@ import type { Logger } from "./logger";
 
 // Tx state machine (TASK §Worker tx state machine), one tx at a time for the whole process:
 //   prepare (chainId 96, nonce 'pending', gasPrice, balance) → simulate (eth_call + estimateGas; revert → throw,
-//   no row) → [DRY_RUN stops here] → sign legacy tx locally → INSERT txs status 'signed' (hash + raw)
+//   no row) → sign legacy tx locally → INSERT txs status 'signed' (hash + raw)
 //   → sendRawTransaction → 'broadcast' → wait receipt → 'confirmed' | 'reverted'.
 // Anything unresolved (crash, timeout, network error) stays 'signed'/'broadcast' and recoverInFlight()
 // finishes it: re-send the same raw tx (idempotent) or wait for its receipt — never re-sign.
@@ -102,17 +102,8 @@ export type ExecuteRequest = {
   account: TxSigner;
 };
 
-export type DryRunResult = {
-  dryRun: true;
-  gasEstimate: bigint;
-  gasLimit: bigint;
-  gasPriceWei: bigint;
-  nonce: number;
-};
-
-export type SentTxResult =
+export type TxResult =
   | {
-      dryRun: false;
       status: "confirmed";
       txId: string;
       hash: Hex;
@@ -120,12 +111,10 @@ export type SentTxResult =
       gasUsed: bigint;
       blockNumber: bigint;
     }
-  | { dryRun: false; status: "reverted"; txId: string; hash: Hex; error: string; gasUsed: bigint; blockNumber: bigint }
-  | { dryRun: false; status: "failed"; txId: string; hash: Hex; error: string }
+  | { status: "reverted"; txId: string; hash: Hex; error: string; gasUsed: bigint; blockNumber: bigint }
+  | { status: "failed"; txId: string; hash: Hex; error: string }
   /** Broadcast (or broadcast state unknown) but not settled yet — recoverInFlight() will finish it. */
-  | { dryRun: false; status: "pending"; txId: string; hash: Hex };
-
-export type TxResult = DryRunResult | SentTxResult;
+  | { status: "pending"; txId: string; hash: Hex };
 
 export type SettledOutcome =
   | { status: "confirmed"; events: ShareEventSums; gasUsed: bigint; blockNumber: bigint }
@@ -135,7 +124,6 @@ export type SettledOutcome =
 export type TxManagerOptions = {
   chain: ChainIo;
   store: TxStore;
-  dryRun: boolean;
   log: Logger;
   now?: () => Date;
   receiptTimeoutMs?: number;
@@ -171,7 +159,6 @@ type BroadcastOutcome =
 export class TxManager {
   private readonly chain: ChainIo;
   private readonly store: TxStore;
-  private readonly dryRun: boolean;
   private readonly log: Logger;
   private readonly now: () => Date;
   private readonly receiptTimeoutMs: number;
@@ -182,7 +169,6 @@ export class TxManager {
   constructor(opts: TxManagerOptions) {
     this.chain = opts.chain;
     this.store = opts.store;
-    this.dryRun = opts.dryRun;
     this.log = opts.log;
     this.now = opts.now ?? (() => new Date());
     this.receiptTimeoutMs = opts.receiptTimeoutMs ?? 180_000;
@@ -191,12 +177,8 @@ export class TxManager {
     this.onSettled = opts.onSettled;
   }
 
-  get isDryRun(): boolean {
-    return this.dryRun;
-  }
-
   /**
-   * Prepare → simulate → (DRY_RUN: return estimate) → sign → persist 'signed' → broadcast → wait receipt.
+   * Prepare → simulate → sign → persist 'signed' → broadcast → wait receipt.
    * Throws SimulationError (no row) when the tx would revert or cannot be paid for, WalletBusyError when
    * the wallet still has an unresolved tx, ChainIdMismatchError on a wrong RPC chain.
    */
@@ -232,14 +214,6 @@ export class TxManager {
       );
     }
 
-    if (this.dryRun) {
-      this.log.info(
-        { kind: req.kind, from, to: req.to, valueKub: formatKub(req.value, 6), gasEstimate: String(gasEstimate), nonce },
-        "DRY_RUN: simulated only (nothing signed or sent)",
-      );
-      return { dryRun: true, gasEstimate, gasLimit, gasPriceWei, nonce };
-    }
-
     // sign locally (legacy: KUB has no baseFee)
     const signedRaw = await req.account.signTransaction({
       type: "legacy",
@@ -271,8 +245,8 @@ export class TxManager {
     this.log.info({ txId, hash, kind: req.kind, nonce, valueKub: formatKub(req.value, 6) }, "tx signed and persisted");
 
     const sent = await this.broadcast(txId, signedRaw, hash, req.to, from);
-    if (sent.kind === "failed") return { dryRun: false, status: "failed", txId, hash, error: sent.error };
-    if (sent.kind === "unknown") return { dryRun: false, status: "pending", txId, hash };
+    if (sent.kind === "failed") return { status: "failed", txId, hash, error: sent.error };
+    if (sent.kind === "unknown") return { status: "pending", txId, hash };
     if (sent.kind === "settled") return this.toResult(txId, hash, sent.final);
 
     let receipt: ReceiptLite | null;
@@ -287,7 +261,7 @@ export class TxManager {
     }
     if (!receipt) {
       this.log.warn({ txId, hash }, "tx not confirmed within timeout; recovery will keep tracking it");
-      return { dryRun: false, status: "pending", txId, hash };
+      return { status: "pending", txId, hash };
     }
     const final = await this.finalize(txId, receipt, req.to, from);
     return this.toResult(txId, hash, final);
@@ -438,10 +412,9 @@ export class TxManager {
     }
   }
 
-  private toResult(txId: string, hash: Hex, final: TxFinal): SentTxResult {
+  private toResult(txId: string, hash: Hex, final: TxFinal): TxResult {
     if (final.status === "confirmed") {
       return {
-        dryRun: false,
         status: "confirmed",
         txId,
         hash,
@@ -451,7 +424,6 @@ export class TxManager {
       };
     }
     return {
-      dryRun: false,
       status: "reverted",
       txId,
       hash,

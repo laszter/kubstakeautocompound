@@ -15,6 +15,13 @@
       "when": 1793861435198,
       "tag": "0001_admin_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793887413184,
+      "tag": "0002_remove_heartbeat_dry_run",
+      "breakpoints": true
     }
   ]
 }

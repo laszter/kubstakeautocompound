@@ -5,7 +5,7 @@
 //     block + gasUsed, and the events decoded from the receipt match the event_* columns
 //   * the expected tx sequence happened (delegate, manual compound, auto compound, claim, undelegate)
 //   * wallet balance on the fork == funded amount + Σ(claimed + undelegated − value − gas fee) (exact wei)
-//   * actions all done, heartbeat dry_run=false, position refreshed (principal 0, last_compound_at set)
+//   * actions all done, heartbeat chain_id=96, position refreshed (principal 0, last_compound_at set)
 // Prints a summary table; exits 1 when any check fails.
 import { asc, eq } from "drizzle-orm";
 import { getAddress, keccak256, parseTransaction, type Hex } from "viem";
@@ -28,7 +28,7 @@ async function main(): Promise<number> {
     check("setup flow completed every step", state.flowCompleted === true);
 
     const [hb] = await db.select().from(workerHeartbeat).where(eq(workerHeartbeat.id, 1));
-    check("worker heartbeat: dry_run=false, chain_id=96", !!hb && hb.dryRun === false && hb.chainId === CHAIN_ID, `dry_run=${hb?.dryRun} chain_id=${hb?.chainId}`);
+    check("worker heartbeat: chain_id=96", !!hb && hb.chainId === CHAIN_ID, `chain_id=${hb?.chainId}`);
 
     const [w] = await db.select({ id: wallets.id, address: wallets.address, enc: wallets.encryptedKey }).from(wallets).where(eq(wallets.id, state.walletId));
     check("wallet row: checksummed address, v1: ciphertext", !!w && w.address === getAddress(state.address) && w.enc.startsWith("v1:"));

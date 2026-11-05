@@ -90,7 +90,6 @@ async function main(): Promise<number> {
     {
       version: WORKER_VERSION,
       instanceId,
-      dryRun: env.DRY_RUN,
       rpc: rpcHost(env.RPC_URL),
       tickIntervalSec: env.TICK_INTERVAL_SEC,
       rpcConcurrency: env.RPC_CONCURRENCY,
@@ -99,9 +98,8 @@ async function main(): Promise<number> {
     },
     "worker starting",
   );
-  if (env.DRY_RUN) log.info("DRY_RUN=true: transactions are simulated only (nothing is signed or broadcast)");
   // host[:port] only (rpcHost drops userinfo/path/query) — on the default RPC this is KUB mainnet, on a fork it is the fork
-  else log.warn(`DRY_RUN=false: the worker WILL sign and broadcast real transactions to ${rpcHost(env.RPC_URL)} (chainId ${CHAIN_ID})`);
+  log.warn(`the worker WILL sign and broadcast real transactions to ${rpcHost(env.RPC_URL)} (chainId ${CHAIN_ID})`);
 
   const { db, pool } = createDb(env.DATABASE_URL, {
     max: 5,
@@ -137,7 +135,6 @@ async function main(): Promise<number> {
     const txManager = new TxManager({
       chain,
       store: createDbTxStore(db),
-      dryRun: env.DRY_RUN,
       log,
       onSettled: createTxSettledHandler(db, log),
     });
@@ -149,7 +146,6 @@ async function main(): Promise<number> {
       accounts: createAccountLoader(db, masterKey),
       log,
       config: {
-        dryRun: env.DRY_RUN,
         subgraphUrl: env.SUBGRAPH_URL,
         timezone: env.APP_TIMEZONE,
         tickIntervalSec: env.TICK_INTERVAL_SEC,

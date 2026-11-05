@@ -1,6 +1,5 @@
 import "server-only";
 import { StatusBadge } from "@/components/status-badge";
-import { Badge } from "@/components/ui/badge";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getWorkerStatus, type WorkerStatusInfo } from "@/lib/worker";
@@ -14,21 +13,8 @@ async function loadStatus(): Promise<WorkerStatusInfo | "db_error"> {
   }
 }
 
-/** Warning "DRY RUN" badge — shown whenever the worker reports `dry_run=true` (simulate only, no real tx). */
-export function DryRunBadge({ className }: { className?: string }) {
-  return (
-    <Badge
-      variant="warning"
-      className={cn("font-semibold", className)}
-      title="DRY_RUN=true — worker จำลอง (simulate) เท่านั้น ไม่ส่ง transaction จริง"
-    >
-      DRY RUN
-    </Badge>
-  );
-}
-
 /**
- * Header chip from `worker_heartbeat`: success when ticking (< 90 s), danger otherwise, + DRY RUN badge.
+ * Header chip from `worker_heartbeat`: success when ticking (< 90 s), danger otherwise.
  * Responsive text (the header is tight): "worker" is screen-reader-only below `sm`; the last-tick time shows from `xl`
  * (always available in `title`).
  */
@@ -45,7 +31,7 @@ export async function WorkerStatus({ className }: { className?: string }) {
     );
   }
 
-  const { heartbeat, fresh, dryRun } = status;
+  const { heartbeat, fresh } = status;
   const lastTick = heartbeat ? relativeTime(heartbeat.lastTickAt) : null;
 
   return (
@@ -67,7 +53,6 @@ export async function WorkerStatus({ className }: { className?: string }) {
           {lastTick ? <span className="hidden xl:inline"> (ล่าสุด {lastTick})</span> : null}
         </StatusBadge>
       )}
-      {dryRun ? <DryRunBadge /> : null}
     </div>
   );
 }

@@ -106,8 +106,5 @@ if [[ " ${generated[*]-} " == *" MASTER_KEY "* ]]; then
   echo "⚠️  สำรอง MASTER_KEY ไว้ที่ปลอดภัยแยกจาก backup ฐานข้อมูล — ถ้าหาย private key ที่เก็บไว้จะกู้คืนไม่ได้"
 fi
 
-dry_run="$(current_value DRY_RUN)"
-if [ "${dry_run:-true}" != "true" ]; then
-  echo
-  echo "⚠️  DRY_RUN=$dry_run — worker จะส่ง transaction จริงบน KUB mainnet"
-fi
+echo
+echo "⚠️  worker ส่ง transaction จริงบน KUB mainnet เสมอ — ไม่มีโหมดจำลอง"

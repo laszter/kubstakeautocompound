@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ValidatorStatusChips } from "@/components/validator-status-chips";
-import { DryRunBadge } from "@/components/worker-status";
 import { requireSession } from "@/lib/auth";
 import { env } from "@/lib/env";
 import {
@@ -132,7 +131,6 @@ export default async function PositionDetailPage(props: PageProps<"/positions/[i
   const claimOnlyAlert = hints.claimOnly || !delegatable;
   const hasPrincipal = p.principalWei > 0n;
   const validatorName = v.name ?? `Validator #${v.validatorId}`;
-  const dryRun = worker.dryRun === true;
 
   // Button guards (the server actions re-check worker freshness + open actions).
   const workerReason = worker.fresh ? null : "worker ไม่ตอบสนอง — ยังสั่งงานไม่ได้";
@@ -200,7 +198,6 @@ export default async function PositionDetailPage(props: PageProps<"/positions/[i
         }
         actions={
           <>
-            {dryRun ? <DryRunBadge /> : null}
             <PositionStatusChips
               enabled={p.enabled}
               claimOnly={claimOnlyAlert}
@@ -326,7 +323,7 @@ export default async function PositionDetailPage(props: PageProps<"/positions/[i
 
         <Card>
           <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">สั่งงาน {dryRun ? <DryRunBadge /> : null}</CardTitle>
+            <CardTitle>สั่งงาน</CardTitle>
             <CardDescription>
               ปุ่มเหล่านี้แค่ส่งคำสั่งเข้าคิว — worker เป็นผู้ simulate/เซ็น/ส่ง tx (ไม่ติด max gas price และ min interval แต่ยังกัน gas
               reserve)
@@ -365,7 +362,6 @@ export default async function PositionDetailPage(props: PageProps<"/positions/[i
               pendingLabel={formatKub(p.pendingWei)}
               costLabel={formatKub(hints.costWei, 6)}
               pathLabel={PATH_LABELS[hints.path]}
-              dryRun={dryRun}
             />
           </CardContent>
         </Card>
@@ -470,7 +466,7 @@ export default async function PositionDetailPage(props: PageProps<"/positions/[i
             </TableHeader>
             <TableBody>
               {recentTxs.length === 0 ? (
-                <EmptyRow cols={8}>ยังไม่มี transaction{dryRun ? " (DRY RUN ไม่บันทึก tx)" : ""}</EmptyRow>
+                <EmptyRow cols={8}>ยังไม่มี transaction</EmptyRow>
               ) : (
                 recentTxs.map((t) => (
                   <TableRow key={t.id}>

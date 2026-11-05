@@ -11,7 +11,6 @@ export type WorkerStatusInfo = {
   /** seconds since `last_tick_at` (null when the worker never wrote a heartbeat) */
   ageSec: number | null;
   fresh: boolean;
-  dryRun: boolean | null;
 };
 
 export async function getHeartbeat(): Promise<WorkerHeartbeatRow | null> {
@@ -20,9 +19,9 @@ export async function getHeartbeat(): Promise<WorkerHeartbeatRow | null> {
 }
 
 export function heartbeatStatus(heartbeat: WorkerHeartbeatRow | null, now: Date = new Date()): WorkerStatusInfo {
-  if (!heartbeat) return { heartbeat: null, ageSec: null, fresh: false, dryRun: null };
+  if (!heartbeat) return { heartbeat: null, ageSec: null, fresh: false };
   const ageSec = Math.max(0, Math.floor((now.getTime() - heartbeat.lastTickAt.getTime()) / 1000));
-  return { heartbeat, ageSec, fresh: ageSec < WORKER_FRESH_SEC, dryRun: heartbeat.dryRun };
+  return { heartbeat, ageSec, fresh: ageSec < WORKER_FRESH_SEC };
 }
 
 /** Heartbeat + freshness in one call (pages use `fresh` to disable action buttons when the worker is down). */

@@ -28,6 +28,8 @@ tasks
 .vscode
 .idea
 apps/web/AGENTS.md
+README.md
+docs
 
 # deployment files (not needed inside the image; keeps the build cache stable when they change)
 Dockerfile

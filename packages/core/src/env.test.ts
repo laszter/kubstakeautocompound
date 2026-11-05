@@ -41,12 +41,11 @@ describe("loadWebEnv", () => {
 });
 
 describe("loadWorkerEnv", () => {
-  it("applies defaults (DRY_RUN=true) and derives the settings seed in wei", () => {
+  it("applies defaults and derives the settings seed in wei", () => {
     const e = loadWorkerEnv(base);
     expect(e).toMatchObject({
       RPC_URL: "https://rpc.kubchain.io",
       CHAIN_ID: CHAIN_ID,
-      DRY_RUN: true,
       TICK_INTERVAL_SEC: 30,
       RPC_CONCURRENCY: 4,
       SUBGRAPH_URL: "https://gateway.bitkubgraph.io/subgraphs/name/bitkubchain/pos",
@@ -68,12 +67,6 @@ describe("loadWorkerEnv", () => {
       checkMaxSec: 21_600,
       validatorSyncSec: 1800,
     });
-  });
-
-  it("DRY_RUN must be explicitly false to send transactions", () => {
-    expect(loadWorkerEnv({ ...base, DRY_RUN: "" }).DRY_RUN).toBe(true);
-    expect(loadWorkerEnv({ ...base, DRY_RUN: "false" }).DRY_RUN).toBe(false);
-    expect(() => loadWorkerEnv({ ...base, DRY_RUN: "maybe" })).toThrow(/DRY_RUN/);
   });
 
   it("SUBGRAPH_URL='' disables the subgraph", () => {

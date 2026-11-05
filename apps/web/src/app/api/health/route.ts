@@ -20,7 +20,6 @@ export async function GET() {
           lastTickAt: status.heartbeat?.lastTickAt.toISOString() ?? null,
           ageSec: status.ageSec,
           fresh: status.fresh,
-          dryRun: status.dryRun,
         },
       },
       { headers: noStore },

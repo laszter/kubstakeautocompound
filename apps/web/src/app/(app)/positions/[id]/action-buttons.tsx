@@ -23,7 +23,6 @@ type Props = {
   pendingLabel: string;
   costLabel: string;
   pathLabel: string;
-  dryRun: boolean;
 };
 
 export function ActionButtons({
@@ -33,7 +32,6 @@ export function ActionButtons({
   pendingLabel,
   costLabel,
   pathLabel,
-  dryRun,
 }: Props) {
   const [claimState, claim, claimPending] = useActionState<ActionResult | null>(enqueueClaim.bind(null, positionId), null);
   const [compoundState, compound, compoundPending] = useActionState<ActionResult | null>(
@@ -93,7 +91,6 @@ export function ActionButtons({
           <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
             <li>path ที่คาดว่าจะใช้: {pathLabel}</li>
             <li>ค่า gas โดยประมาณ ≈ {costLabel} KUB</li>
-            {dryRun ? <li className="font-medium text-warning">DRY RUN — worker จะจำลองเท่านั้น ไม่ส่ง tx จริง</li> : null}
           </ul>
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>ยกเลิก</DialogClose>

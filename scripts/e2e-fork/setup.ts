@@ -5,7 +5,7 @@
 //     fresh throwaway key → funded ONLY on the fork (anvil_setBalance) → encrypted with the e2e MASTER_KEY
 //     exactly like the web app does → wallets + positions rows (enabled=false: manual actions only).
 //
-//   tsx setup.ts flow   (worker running with DRY_RUN=false, RPC_URL=http://anvil:8545)
+//   tsx setup.ts flow   (worker running with RPC_URL=http://anvil:8545)
 //     1 delegate 100 KUB (action) → 2 inject a reward (distributeReward from validator 0's signer as
 //     block.coinbase) → 3 compound (action, 1-tx) → 4 auto-compound by the engine (position enabled) →
 //     5 inject + claim (action) → 6 undelegate everything (action).

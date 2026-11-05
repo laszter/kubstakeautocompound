@@ -118,7 +118,6 @@ const workerSchema = z
     MASTER_KEY: masterKey,
     RPC_URL: httpUrl(RPC_URL_DEFAULT),
     CHAIN_ID: z.coerce.number().pipe(z.literal(CHAIN_ID)).default(CHAIN_ID),
-    DRY_RUN: boolWithDefault(true),
     TICK_INTERVAL_SEC: intWithDefault(30, 5, 3600),
     RPC_CONCURRENCY: intWithDefault(4, 1, 4),
     /** Unset → default subgraph; explicitly empty → subgraph disabled. */

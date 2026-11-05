@@ -79,7 +79,6 @@ async function writeHeartbeat(ctx: WorkerCtx, chain: { blockNumber: bigint; gasP
       chainId: CHAIN_ID,
       blockNumber: chain?.blockNumber ?? null,
       gasPriceWei: chain?.gasPriceWei ?? null,
-      dryRun: ctx.config.dryRun,
       version: ctx.version,
     })
     .onConflictDoUpdate({
@@ -93,7 +92,6 @@ async function writeHeartbeat(ctx: WorkerCtx, chain: { blockNumber: bigint; gasP
         // keep the last known chain facts when this tick's RPC reads failed
         blockNumber: chain ? chain.blockNumber : sql`${workerHeartbeat.blockNumber}`,
         gasPriceWei: chain ? chain.gasPriceWei : sql`${workerHeartbeat.gasPriceWei}`,
-        dryRun: ctx.config.dryRun,
         version: ctx.version,
       },
     });

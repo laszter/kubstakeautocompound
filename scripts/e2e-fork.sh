@@ -9,7 +9,7 @@
 # image tag kubstake-worker:e2e), own generated secrets file scripts/e2e-fork/.env.e2e (gitignored,
 # deleted on exit), web not started. Your .env, your stack and the kubstake_pgdata volume are not used.
 #
-# SAFETY: this worker runs with DRY_RUN=false, so (a) the overlay pins its RPC_URL to http://anvil:8545
+# SAFETY: this worker always signs and broadcasts, so (a) the overlay pins its RPC_URL to http://anvil:8545
 # (a literal, not interpolated), (b) this script refuses to start unless the resolved compose config says
 # so, (c) it checks the worker's own startup log line, and (d) setup.ts/assert.ts refuse any RPC that is not
 # an anvil node on 127.0.0.1. The wallet is a freshly generated key funded only on the fork (anvil_setBalance).
@@ -91,7 +91,6 @@ WEB_PORT=3999
 RPC_URL=$ANVIL_INTERNAL_URL
 CHAIN_ID=96
 SUBGRAPH_URL=
-DRY_RUN=false
 TICK_INTERVAL_SEC=5
 RPC_CONCURRENCY=4
 LOG_LEVEL=info
@@ -106,19 +105,18 @@ APP_TIMEZONE=Asia/Bangkok
 TZ=Asia/Bangkok
 EOF
 
-# ---- 2. SAFETY GUARD: the DRY_RUN=false worker must resolve to the local anvil fork -------------------
+# ---- 2. SAFETY GUARD: the worker must resolve to the local anvil fork -------------------
 "${DC[@]}" config --format json | node -e '
   const c = JSON.parse(require("fs").readFileSync(0, "utf8"));
   const want = process.argv[1];
   const fail = (m) => { console.error("[e2e-fork] SAFETY GUARD: " + m); process.exit(1); };
   const w = (c.services.worker || {}).environment || {};
-  if (w.RPC_URL !== want) fail(`worker RPC_URL resolves to "${w.RPC_URL}", expected ${want} — refusing to run a DRY_RUN=false worker`);
-  if (String(w.DRY_RUN) !== "false") fail(`worker DRY_RUN resolves to "${w.DRY_RUN}", expected false`);
+  if (w.RPC_URL !== want) fail(`worker RPC_URL resolves to "${w.RPC_URL}", expected ${want} — refusing to run a worker that sends real transactions`);
   if (!c.services.anvil) fail("anvil service missing from the merged config");
   const vol = ((c.volumes || {}).pgdata || {}).name;
   if (vol !== "kubstake-e2e_pgdata") fail(`db volume resolves to "${vol}", expected kubstake-e2e_pgdata`);
   if (c.name !== "kubstake-e2e") fail(`compose project resolves to "${c.name}"`);
-  console.log(`[e2e-fork] guard OK: project ${c.name}, worker RPC_URL=${w.RPC_URL} DRY_RUN=${w.DRY_RUN}, volume ${vol}`);
+  console.log(`[e2e-fork] guard OK: project ${c.name}, worker RPC_URL=${w.RPC_URL}, volume ${vol}`);
 ' "$ANVIL_INTERNAL_URL"
 
 # leftovers of an interrupted run (this project only)
@@ -163,16 +161,16 @@ log "seed: validator 0 + throwaway wallet + position"
 "$TSX" "$E2E_DIR/setup.ts" seed
 
 # ---- 5. worker (second guard: its own startup line must name the anvil RPC) -------------------------
-log "starting worker (DRY_RUN=false, RPC anvil:8545)"
+log "starting worker (RPC anvil:8545)"
 "${DC[@]}" up -d --no-deps worker
 ready=0
 for _ in $(seq 1 90); do
   wlogs="$("${DC[@]}" logs --no-color --no-log-prefix worker 2>/dev/null || true)"
   start_line="$(grep '"msg":"worker starting"' <<<"$wlogs" | tail -1 || true)"
   if [ -n "$start_line" ]; then
-    if ! grep -q '"rpc":"anvil:8545"' <<<"$start_line" || ! grep -q '"dryRun":false' <<<"$start_line"; then
+    if ! grep -q '"rpc":"anvil:8545"' <<<"$start_line"; then
       "${DC[@]}" kill worker >/dev/null 2>&1 || true
-      die "SAFETY GUARD: worker started with an unexpected RPC/DRY_RUN: $start_line"
+      die "SAFETY GUARD: worker started with an unexpected RPC: $start_line"
     fi
   fi
   if grep -q 'leader lock acquired' <<<"$wlogs"; then

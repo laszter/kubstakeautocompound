@@ -267,7 +267,6 @@ export const workerHeartbeat = pgTable(
     chainId: integer("chain_id"),
     blockNumber: bigint("block_number", { mode: "bigint" }),
     gasPriceWei: wei("gas_price_wei"),
-    dryRun: boolean("dry_run").notNull(),
     version: text("version").notNull(),
     lastError: text("last_error"),
     createdAt: createdAt(),

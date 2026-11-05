@@ -92,7 +92,6 @@ export async function processActions(ctx: WorkerCtx, inputs: TickInputs, max = M
 }
 
 function fromTx(r: TxResult, label: string): ActionOutcome {
-  if (r.dryRun) return { status: "done", error: `DRY_RUN: simulated only (gas ≈ ${String(r.gasEstimate)})` };
   switch (r.status) {
     case "confirmed":
       return { status: "done", error: null, txId: r.txId };
@@ -115,8 +114,6 @@ function fromRun(run: RunOutcome): ActionOutcome {
   switch (run.status) {
     case "done":
       return { status: "done", error: null, txId: run.txId };
-    case "dry_run":
-      return { status: "done", error: run.error };
     case "pending":
       return run.txId ? { status: "running", txId: run.txId } : { status: "failed", error: run.result };
     case "failed":

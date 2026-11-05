@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 
 /**
  * One colour per meaning (TASK §4 "Status"):
- * success = fresh worker / done / confirmed / auto / open for delegation · warning = DRY RUN / backoff / not worth it /
+ * success = fresh worker / done / confirmed / auto / open for delegation · warning = backoff / not worth it /
  * paused / hot wallet · info = running / broadcast / hints · danger = failed / reverted / stale / claim-only / inactive ·
  * neutral = pending / signed / disabled / closed for delegation · outline = skipped / official pool / minimal set.
  */

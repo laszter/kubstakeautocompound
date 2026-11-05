@@ -75,7 +75,7 @@ export type EngineInputs = { settings: EngineSettings; gasPriceWei?: bigint };
 
 export type ChainState = { principalWei: bigint; pendingWei: bigint; liquidWei: bigint; gasPriceWei: bigint };
 
-export type RunStatus = "done" | "dry_run" | "failed" | "pending" | "skipped";
+export type RunStatus = "done" | "failed" | "pending" | "skipped";
 
 export type RunOutcome = {
   status: RunStatus;
@@ -358,16 +358,6 @@ export async function runCompound(
   const soon = (): PositionPatch => ({ nextCheckAt: addSec(now, settings.checkMinSec) });
 
   const outcomeOf = (r: TxResult, label: string, describe: (ev: ShareEventSums) => string, extra: PositionPatch = {}): RunOutcome => {
-    if (r.dryRun) {
-      const gas = String(r.gasEstimate);
-      return {
-        status: "dry_run",
-        result: `dry-run: would ${label} (gas ≈ ${gas})`,
-        patch: soon(),
-        txId: null,
-        error: `DRY_RUN: simulated only (gas ≈ ${gas})`,
-      };
-    }
     switch (r.status) {
       case "confirmed":
         return { status: "done", result: describe(r.events), patch: success(extra), txId: r.txId, error: null };
@@ -479,7 +469,7 @@ export async function runCompound(
     } catch (err) {
       return errorOutcome(err, "compound 2-tx (claim)");
     }
-    if (claim.dryRun || claim.status !== "confirmed") {
+    if (claim.status !== "confirmed") {
       return outcomeOf(claim, "compound 2-tx (claim, then delegate the claimed amount)", () => "");
     }
     const claimed = claim.events.claimedWei;

@@ -5,7 +5,7 @@
 # Isolation from the real stack: own project name (-p kubstake-e2e → volume kubstake-e2e_pgdata, network
 # kubstake-e2e_default), own generated env file, own image tag (kubstake-worker:e2e), web disabled.
 #
-# SAFETY: the worker runs with DRY_RUN=false here, so its RPC is pinned to the local anvil fork below
+# SAFETY: the worker always signs and broadcasts, so its RPC is pinned to the local anvil fork below
 # (literal values, NOT ${...} interpolation — nothing in an env file or the shell can redirect it).
 # anvil executes every tx locally; it only READS state from the upstream --fork-url and never forwards
 # transactions to it. e2e-fork.sh additionally refuses to start if the resolved worker RPC_URL differs.
@@ -60,7 +60,6 @@ services:
         condition: service_healthy
     environment:
       RPC_URL: http://anvil:8545
-      DRY_RUN: "false"
       SUBGRAPH_URL: "" # no external lookups from the e2e worker
 
   web:

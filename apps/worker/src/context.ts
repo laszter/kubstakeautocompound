@@ -6,7 +6,6 @@ import type { EngineStore } from "./engine";
 import type { TxManager } from "./txManager";
 
 export type WorkerConfig = {
-  dryRun: boolean;
   /** '' = subgraph disabled */
   subgraphUrl: string;
   /** APP_TIMEZONE (cron evaluation) */

@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DryRunBadge } from "@/components/worker-status";
 import { requireSession } from "@/lib/auth";
 import { formatDateTime, formatDuration, formatGwei, formatKub, relativeTime, shortAddr } from "@/lib/format";
 import { getWorkerStatus, WORKER_FRESH_SEC, type WorkerStatusInfo } from "@/lib/worker";
@@ -176,15 +175,12 @@ export default async function DashboardPage(props: PageProps<"/">) {
                 ไม่ตอบสนอง
               </StatusBadge>
             )}
-            {worker.dryRun ? <DryRunBadge /> : null}
           </div>
           <p className="min-w-0 text-sm break-words text-muted-foreground">
             {hb
               ? `tick ล่าสุด ${formatDateTime(hb.lastTickAt)} (${relativeTime(hb.lastTickAt)}) · block ${
                   hb.blockNumber !== null ? hb.blockNumber.toLocaleString("en-US") : "-"
-                } · gas price ${hb.gasPriceWei !== null ? `${formatGwei(hb.gasPriceWei)} gwei` : "-"}${
-                  worker.dryRun ? " · DRY RUN = จำลองเท่านั้น ไม่ส่ง transaction จริง" : ""
-                }`
+                } · gas price ${hb.gasPriceWei !== null ? `${formatGwei(hb.gasPriceWei)} gwei` : "-"}`
               : `ยังไม่มี heartbeat — worker ยังไม่เคยรันกับฐานข้อมูลนี้ (ถือว่าทำงานถ้า tick ภายใน ${WORKER_FRESH_SEC} วินาที)`}
             {hb?.lastError ? <span className="text-destructive"> · error ล่าสุด: {hb.lastError}</span> : null}
           </p>

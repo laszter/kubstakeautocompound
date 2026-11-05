@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DryRunBadge } from "@/components/worker-status";
 import { requireSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -84,9 +83,7 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2">
-            Worker {hb?.dryRun ? <DryRunBadge /> : null}
-          </CardTitle>
+          <CardTitle>Worker</CardTitle>
           <CardDescription>
             จาก worker_heartbeat — ถือว่าทำงานอยู่ถ้า tick ล่าสุดไม่เกิน {WORKER_FRESH_SEC} วินาที
           </CardDescription>
@@ -119,9 +116,6 @@ export default async function SettingsPage() {
               <InfoRow label="Chain ID">{hb.chainId ?? "-"}</InfoRow>
               <InfoRow label="Block ล่าสุด">{hb.blockNumber !== null ? hb.blockNumber.toLocaleString("en-US") : "-"}</InfoRow>
               <InfoRow label="Gas price">{hb.gasPriceWei !== null ? `${formatGwei(hb.gasPriceWei)} gwei` : "-"}</InfoRow>
-              <InfoRow label="DRY_RUN">
-                {hb.dryRun ? "true — จำลองเท่านั้น ไม่ส่ง transaction จริง" : "false — ส่ง transaction จริงบน mainnet"}
-              </InfoRow>
               <InfoRow label="Error ล่าสุด">
                 {hb.lastError ? <span className="text-destructive">{hb.lastError}</span> : "-"}
               </InfoRow>

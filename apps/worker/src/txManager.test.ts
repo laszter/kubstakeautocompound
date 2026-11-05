@@ -18,12 +18,12 @@ import {
 
 const NOW = new Date("2026-11-04T10:00:00Z");
 
-function setup(opts: { dryRun?: boolean } = {}) {
+function setup() {
   const chain = mockChain();
   const store = memoryTxStore(() => NOW);
   const signer = testSigner();
   const onSettled = vi.fn(async () => {});
-  const tm = new TxManager({ chain, store, dryRun: opts.dryRun ?? false, log: silentLogger(), now: () => NOW, onSettled });
+  const tm = new TxManager({ chain, store, log: silentLogger(), now: () => NOW, onSettled });
   const req = (over: Partial<ExecuteRequest> = {}): ExecuteRequest => ({
     walletId: "wallet-1",
     positionId: "position-1",
@@ -48,12 +48,10 @@ describe("TxManager.execute", () => {
     const r = await tm.execute(req());
 
     expect(r).toMatchObject({
-      dryRun: false,
       status: "confirmed",
       events: { delegatedWei: 3n * E18, claimedWei: 3n * E18, undelegatedWei: 0n },
       gasUsed: 207_000n,
     });
-    if (r.dryRun) throw new Error("unreachable");
     const row = store.rows.get(r.txId)!;
     expect(row.history).toEqual(["signed", "broadcast", "confirmed"]);
 
@@ -119,22 +117,9 @@ describe("TxManager.execute", () => {
     chain.waitForTransactionReceipt.mockResolvedValue(receipt("reverted", [], 150_000n));
 
     const r = await tm.execute(req({ kind: "claim", data: encodeClaim(), value: 0n }));
-    expect(r).toMatchObject({ dryRun: false, status: "reverted", gasUsed: 150_000n });
-    if (r.dryRun) throw new Error("unreachable");
+    expect(r).toMatchObject({ status: "reverted", gasUsed: 150_000n });
     expect(store.rows.get(r.txId)!.history).toEqual(["signed", "broadcast", "reverted"]);
     expect(store.markConfirmed).toHaveBeenCalledWith(r.txId, expect.objectContaining({ status: "reverted" }));
-  });
-
-  it("DRY_RUN: simulates only — never signs, persists or sends", async () => {
-    const { chain, store, signer, tm, req } = setup({ dryRun: true });
-    const r = await tm.execute(req());
-    expect(r).toEqual({ dryRun: true, gasEstimate: 207_000n, gasLimit: 260_000n, gasPriceWei: 25n * GWEI, nonce: 7 });
-    expect(chain.call).toHaveBeenCalledTimes(1);
-    expect(chain.estimateGas).toHaveBeenCalledTimes(1);
-    expect(signer.signTransaction).not.toHaveBeenCalled();
-    expect(store.insertSigned).not.toHaveBeenCalled();
-    expect(chain.sendRawTransaction).not.toHaveBeenCalled();
-    expect(chain.waitForTransactionReceipt).not.toHaveBeenCalled();
   });
 
   it("refuses to sign when the RPC is not chainId 96", async () => {
@@ -157,8 +142,7 @@ describe("TxManager.execute", () => {
     const { chain, store, tm, req } = setup();
     chain.sendRawTransaction.mockRejectedValue(new HttpRequestError({ url: "https://rpc.example", details: "socket hang up" }));
     const r = await tm.execute(req());
-    expect(r).toMatchObject({ dryRun: false, status: "pending" });
-    if (r.dryRun) throw new Error("unreachable");
+    expect(r).toMatchObject({ status: "pending" });
     expect(store.rows.get(r.txId)!.status).toBe("signed");
     expect(chain.waitForTransactionReceipt).not.toHaveBeenCalled();
   });
@@ -168,7 +152,6 @@ describe("TxManager.execute", () => {
     chain.sendRawTransaction.mockRejectedValue(new Error("insufficient funds for gas * price + value"));
     const r = await tm.execute(req());
     expect(r).toMatchObject({ status: "failed" });
-    if (r.dryRun) throw new Error("unreachable");
     expect(store.rows.get(r.txId)!.history).toEqual(["signed", "failed"]);
   });
 
@@ -177,7 +160,6 @@ describe("TxManager.execute", () => {
     chain.waitForTransactionReceipt.mockResolvedValue(null);
     const r = await tm.execute(req());
     expect(r).toMatchObject({ status: "pending" });
-    if (r.dryRun) throw new Error("unreachable");
     expect(store.rows.get(r.txId)!.status).toBe("broadcast");
   });
 });
