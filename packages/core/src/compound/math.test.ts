@@ -5,6 +5,7 @@ import {
   GAS_EST_2TX,
   SECONDS_PER_YEAR,
   aprSample,
+  compoundProjection,
   etaSeconds,
   gasCostWei,
   isqrt,
@@ -152,5 +153,66 @@ describe("nextCheckDelaySec", () => {
     expect(nextCheckDelaySec(Infinity, 900, 21_600)).toBe(21_600);
     expect(nextCheckDelaySec(Number.NaN, 900, 21_600)).toBe(21_600);
     expect(nextCheckDelaySec(0, 900, 21_600)).toBe(900);
+  });
+});
+
+describe("compoundProjection", () => {
+  // Measured on mainnet 2026-11-17: 1,700 KUB, APR 0.188% (raw snapshots), 25 gwei × 207,378 gas.
+  const P = 1700;
+  const R_APR = 0.00188;
+  const C = 25 * 207_378 / 1e9;
+  const rStar = Math.sqrt(2 * C * P);
+  const at = (thresholdKub: number, years: number) =>
+    compoundProjection({ principalKub: P, apr: R_APR, costKub: C, thresholdKub, years })!;
+
+  /** Fixed-principal step-by-step reference: compound k at k·t earns R·r·(T − k·t), pays C. */
+  function bruteForceNet(R: number, T: number): number {
+    const t = R / (P * R_APR);
+    let net = 0;
+    for (let k = 1; k * t <= T + 1e-12; k++) net += R * R_APR * (T - k * t) - C;
+    return net;
+  }
+
+  it("matches the step-by-step reference", () => {
+    for (const R of [0.04, 0.5, 1, 2, rStar, 5]) {
+      for (const T of [1, 3, 5, 10]) expect(at(R, T).netKub).toBeCloseTo(bruteForceNet(R, T), 9);
+    }
+  });
+
+  it("small threshold: gas outweighs the compound gain", () => {
+    const r = at(0.04, 1);
+    expect(r.compounds).toBe(79);
+    expect(r.gainKub).toBeCloseTo(0.00297, 5);
+    expect(r.gasKub).toBeCloseTo(0.4096, 4);
+    expect(r.netKub).toBeCloseTo(-0.4066, 4);
+    expect(r.paybackYears).toBeCloseTo(68.94, 2);
+  });
+
+  it("R*: no compound in year 1, best net over 10 years", () => {
+    expect(at(rStar, 1)).toMatchObject({ compounds: 0, gainKub: 0, gasKub: 0, netKub: 0 });
+    const ten = at(rStar, 10);
+    expect(ten.compounds).toBe(7);
+    expect(ten.netKub).toBeCloseTo(0.2259, 4);
+    for (const R of [0.04, 0.5, 1, 2, 5]) expect(at(R, 10).netKub).toBeLessThan(ten.netKub);
+  });
+
+  it("interval = R / (P·r)", () => {
+    expect(at(rStar, 1).intervalYears * 365).toBeCloseTo(479.49, 2);
+  });
+
+  it("exact multiple of the interval is counted", () => {
+    // t = 1 / (100 · 0.1) = 0.1 yr → 10 compounds in 1 yr despite float error in T / t.
+    expect(compoundProjection({ principalKub: 100, apr: 0.1, costKub: 0, thresholdKub: 1, years: 1 })!.compounds).toBe(10);
+  });
+
+  it("null for invalid inputs", () => {
+    const ok = { principalKub: P, apr: R_APR, costKub: C, thresholdKub: 1, years: 1 };
+    expect(compoundProjection({ ...ok, principalKub: 0 })).toBeNull();
+    expect(compoundProjection({ ...ok, apr: 0 })).toBeNull();
+    expect(compoundProjection({ ...ok, thresholdKub: 0 })).toBeNull();
+    expect(compoundProjection({ ...ok, costKub: -1 })).toBeNull();
+    expect(compoundProjection({ ...ok, years: -1 })).toBeNull();
+    expect(compoundProjection({ ...ok, apr: Number.NaN })).toBeNull();
+    expect(compoundProjection({ ...ok, years: 0 })).toMatchObject({ compounds: 0, netKub: 0 });
   });
 });

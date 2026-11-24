@@ -69,6 +69,44 @@ export function updateEwma(prev: number | null, sample: number, alpha = EWMA_ALP
   return alpha * sample + (1 - alpha) * prev;
 }
 
+export type CompoundProjection = {
+  /** Years between compounds: R / (P·r). */
+  intervalYears: number;
+  /** Compounds within the horizon: floor(T / interval). */
+  compounds: number;
+  /** Extra reward from restaked rewards, vs never compounding (KUB). */
+  gainKub: number;
+  /** Gas paid for those compounds (KUB). */
+  gasKub: number;
+  /** gain − gas: result vs never compounding (KUB). */
+  netKub: number;
+  /** Years for one compound's extra yield (R·r per year) to repay its gas C. */
+  paybackYears: number;
+};
+
+/**
+ * Compound-vs-never projection at KUB scale (display estimate, not money math): compound each time pending
+ * reaches R, principal P, APR r, gas C per compound, over T years. Pending earns nothing until restaked, so
+ * compound k (at k·t) adds R·r·(T − k·t); summed: R·r·(n·T − t·n(n+1)/2). P's growth is ignored (< 1% off).
+ * null for non-finite inputs, P / r / R <= 0, or C / T < 0.
+ */
+export function compoundProjection(i: {
+  principalKub: number;
+  apr: number;
+  costKub: number;
+  thresholdKub: number;
+  years: number;
+}): CompoundProjection | null {
+  const { principalKub: p, apr: r, costKub: c, thresholdKub: R, years: T } = i;
+  if (![p, r, c, R, T].every(Number.isFinite) || p <= 0 || r <= 0 || R <= 0 || c < 0 || T < 0) return null;
+  const t = R / (p * r);
+  // Epsilon keeps an exact multiple (T = n·t) from flooring to n − 1 on float error.
+  const n = Math.floor(T / t + 1e-9);
+  const gainKub = R * r * (n * T - (t * n * (n + 1)) / 2);
+  const gasKub = n * c;
+  return { intervalYears: t, compounds: n, gainKub, gasKub, netKub: gainKub - gasKub, paybackYears: c / (R * r) };
+}
+
 /** Next check delay = clamp(eta/4, min, max), integer seconds. Non-finite eta → max. */
 export function nextCheckDelaySec(etaSec: number, minSec: number, maxSec: number): number {
   if (Number.isNaN(etaSec) || etaSec === Infinity) return maxSec;

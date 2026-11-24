@@ -1,4 +1,4 @@
-import { describeCron } from "@kubstake/core/browser";
+import { describeCron, GAS_EST_1TX, GAS_EST_2TX } from "@kubstake/core/browser";
 import { CircleAlertIcon, CircleCheckIcon, InfoIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -46,6 +46,7 @@ import {
 import { isUuid, positionToSettingsValues } from "../_lib/position-fields";
 import { loadPositionDetail } from "../_lib/queries";
 import { ActionButtons } from "./action-buttons";
+import { CompoundCalculator } from "./compound-calculator";
 import { DelegateForm } from "./delegate-form";
 import { DeletePositionButton } from "./delete-position-button";
 import { EnabledSwitch } from "./enabled-switch";
@@ -397,6 +398,27 @@ export default async function PositionDetailPage(props: PageProps<"/positions/[i
               defaultMinRewardLabel: formatKub(hints.defaultMinRewardWei, 6),
               aprLabel: formatApr(hints.apr),
             }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>เทียบ threshold</CardTitle>
+          <CardDescription>
+            ดูว่าแต่ละ threshold ต้องรอนานแค่ไหน คืนทุน gas เมื่อไร และได้สุทธิเท่าไรเทียบกับไม่ compound · ค่าเริ่มต้นมาจาก position นี้
+            แก้ตัวเลขเพื่อลองแบบอื่นได้
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CompoundCalculator
+            initial={{
+              principalKub: Number(p.principalWei) / 1e18,
+              aprPct: hints.apr * 100,
+              gasGwei: Number(hints.gasPriceWei) / 1e9,
+              gasUnits: Number(hints.path === "compound_2tx" ? GAS_EST_2TX : GAS_EST_1TX),
+            }}
+            currentTargetKub={p.strategy === "schedule" ? null : Number(hints.activeTargetWei) / 1e18}
           />
         </CardContent>
       </Card>
